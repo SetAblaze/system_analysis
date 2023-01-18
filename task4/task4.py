@@ -1,60 +1,65 @@
-"""task4 Левичкин БПМ-19-4"""
+""" task4 Левичкин БПМ-19-4 """
 
-import json
+from io import StringIO
+import csv
+import math
 import numpy as np
 import pandas as pd
 
-def to_json(s):
-    js = json.loads(s)
-    s1 = []
-    for j in js:
-        if isinstance(j, list):
-            s1.append(j)
-        if isinstance(j, str):
-            a = []
-            a.append(j)
-            s1.append(a)
-    return s1
+def task(csvString):
+  f = StringIO(csvString)
+  reader = csv.reader(f)
+  graph = {}
+  vertices = []
+  for row in reader:
+    edge = list(map(int, row))
+    edge.sort()
+    if edge[0] in graph:
+      if not edge[1] in graph[edge[0]]:
+        graph[edge[0]].append(edge[1])
+    else:
+      graph[edge[0]] = [edge[1]]
+    if not edge[0] in vertices:
+      vertices.append(edge[0])
+    if not edge[1] in vertices:
+      vertices.append(edge[1])
 
-def matrix_transpose(js):
-    groups_ranks = dict(enumerate(js))
-    objects = [item for sublist in js for item in sublist]
-    object_to_id = {v: k for k, v in dict(enumerate(objects)).items()}
-    matrix = np.zeros((len(objects), len(objects)))
-    prev_objects = []
-    for rank, group in groups_ranks.items():
-        ids = [object_to_id[x] for x in group]
-        self_ids = np.array(list(zip(ids, ids)))
-        matrix[self_ids[:, :, None], ids] = 1
-        matrix[np.array(prev_objects, dtype=np.int8)[:, None], ids] = 1
-        prev_objects.extend(ids)
+  out = [[0 for i in range(5)] for i in range(len(vertices))]
 
-    result = pd.DataFrame(matrix, columns=object_to_id.keys(), index=object_to_id.keys())
-    result_t = result.transpose()
-    return result, result_t
 
-def mult(df1, df2):
-    res = df1.copy()
-    for c in res.columns:
-        for i in res.index:
-            res[c][i] = df1[c][i] * df2[c][i]
-    return res
+  for i in graph:
+    out[i - 1][0] += len(graph[i])
 
-def task(str1, str2):
-    j1 = to_json(str1)
-    j2 = to_json(str2)
+  r2 = []
+  for i in graph:
+    for j in graph[i]:
+      out[j - 1][1] += 1
+      if len(graph[i]) > 1:
+        out[j - 1][4] += 1
+      if not j in r2:
+        r2.append(j)
+  r2.sort()
 
-    m1, m1_t = matrix_transpose(j1)
-    m2, m2_t = matrix_transpose(j2)
+  for i in r2:
+    if i in graph.keys():
+      for j in graph[i]:
+          out[j - 1][3] += 1
+      for j in graph:
+        if i in graph[j]:
+          out[j - 1][2] += len(graph[i])
+  for i in r2:
+    if i in graph.keys():
+      for j in graph[i]:
+        out[j - 1][3] += out[i - 1][3]
+  for i in sorted(graph.keys(), reverse=True):
+    for j in graph[i]:
+      out[i - 1][2] += out[j - 1][2]
 
-    m12 = mult(m1, m2)
-    m12_t = mult(m1_t, m2_t)
 
-    result = m12.copy()
-    contr = []
-    for c in result.columns:
-        for i in result.index:
-            result[c][i] = m12[c][i] + m12_t[c][i]
-            if result[c][i] == 0.0 and [i, c] not in contr and [c, i] not in contr:
-                contr.append([c, i])
-    return contr
+  sum = 0
+  for i in out:
+    for j in i:
+      if j != 0:
+        sum -= (j / (len(vertices) - 1)) * math.log2(j / (len(vertices) - 1))
+
+  return sum
