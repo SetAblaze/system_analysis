@@ -1,63 +1,52 @@
-import numpy as np
 import json
+import numpy as np
 
+def compare(array):
+    res = [[0 for i in range(len(array))] for i in range(len(array))]
+    for i in range(len(array)):
+        for j in range(len(array)):
+            if array[i] > array[j]:
+                res[i][j] = 0
+            elif array[i] < array[j]:
+                res[i][j] = 1
+            else:
+                res[i][j] = 0.5
+    return res
 
-def exp_ind(arr, experts):
-    ind = -1
-    for i in range(len(experts)):
-        if arr == experts[i]:
-            ind = i
-    return ind
+def t_sum(array, n, m):
+    res = 0
+    for i in range(n):
+      marks_numbers = {0:0, 0.5: 0, 1: 0}
+      for j in range(m):
+          for k in range(m):
+              marks_numbers[array[i][j][k]] += 1
+      for i in marks_numbers.values():
+          res += (i**2 - i)
+    return res
 
-def to_json(s):
-    js = json.loads(s)
-    s1 = []
-    for j in js:
-        if isinstance(j, list):
-            s1.append(j)
-        if isinstance(j, str):
-            a = []
-            a.append(j)
-            s1.append(a)
-    return s1
+def task(string):
+    input = json.loads(string)
+    marks = []
+    for elements in input:
+        marks.append(compare(elements))
 
-def create_matrix(experts, index):
-    exp = np.zeros((len(experts[index]), len(experts[index])))
-    for i in range(len(experts[index])):
-        for j in range(len(experts[index])):
-            if experts[index][i] < experts[index][j]:
-                exp[i][j] = 1
-            if experts[index][i] == experts[index][j]:
-                exp[i][j] = 0.5
-            if experts[index][i] > experts[index][j]:
-                exp[i][j] = 0
-    return exp
+    n = len(marks)    
+    m = len(marks[0]) 
 
+    marks_new = [[0 for i in range(n)] for j in range(n)]
+    for i in range(n):                                  
+        for j in range(m):                                
+            for k in range(m):                            
+                marks_new[j][k] += marks[i][j][k]/n
 
-def task(js):
-    experts = to_json(js)
-    experts_matrices = []
-    for exp in experts:
-        experts_matrices.append(create_matrix(experts, exp_ind(exp, experts)))
-
-    m = np.zeros(experts_matrices[0].shape)
-    for i in range(experts_matrices[0].shape[0]):
-        for j in range(experts_matrices[0].shape[0]):
-            for k in range(len(experts_matrices)):
-                m[i][j] += 1 / experts_matrices[k].shape[0] * experts_matrices[k][i][j]
-
-    k0 = []
-    for i in range(experts_matrices[0].shape[0]):
-        k0.append(1 / experts_matrices[0].shape[0])
-
-    y = np.dot(m, k0)
-    l = np.dot(np.array([1, 1, 1]), y)
-    k1 = np.dot(1 / l, y)
-
-    while max(abs(k1 - k0)) >= 0.001:
-        k0 = k1
-        y = np.dot(m, k0)
-        l = np.dot(np.array([1, 1, 1]), y)
-        k1 = np.dot(1 / l, y)
-
-    return k1
+    k0 = [1/m for i in range(n)]
+    Eps = 0.001
+    while True:
+        y = np.matmul(marks_new, k0)
+        lmbd = np.matmul([1,1,1], y)
+        k = y / lmbd
+        if Eps > max(k - k0):
+          break
+        else:
+          k0 = k
+    return k
